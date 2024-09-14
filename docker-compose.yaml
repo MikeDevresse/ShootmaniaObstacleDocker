@@ -1,0 +1,51 @@
+services:
+    mariadb:
+        image: mariadb
+        env_file: mariadb.env
+        volumes:
+            - type: bind
+              source: ./mysql-data
+              target: /var/lib/mysql
+        healthcheck:
+          test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+          start_period: 10s
+          interval: 10s
+          timeout: 5s
+          retries: 3
+    init-db:
+        build:
+            context: .
+        entrypoint: "./install_db.sh"
+        env_file: initdb.env
+        volumes:
+            - type: bind
+              source: ./install_db.sh
+              target: /shootmania/install_db.sh
+        depends_on:
+            mysql:
+                condition: service_healthy
+    shootmania:
+        build:
+            context: .
+        volumes:
+            - type: bind
+              source: ./MxMaps
+              target: /shootmania/UserData/Maps/Mx
+            - type: bind
+              source: ./dedicated_cfg.txt
+              target: /shootmania/UserData/Config/dedicated_cfg.txt
+            - type: bind
+              source: ./matchsettings.txt
+              target: /shootmania/UserData/Maps/matchsettings.txt
+            - type: bind
+              source: ./server.xml
+              target: /shootmania/configs/server.xml
+        ports:
+            - "5000:5000/udp"
+            - "2350:2350/tcp"
+            - "2350:2350/udp"
+            - "3450:3450/tcp"
+            - "3450:3450/udp"
+        depends_on:
+            init-db:
+                condition: service_completed_successfully
